@@ -1,0 +1,374 @@
+name: Healthcare_Billing
+tables:
+  - name: fact_billing
+    description: Main fact table containing billing transactions with amounts, discounts, and related dimensional keys.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: fact_billing
+    primary_key:
+      columns:
+        - billing_id
+    time_dimensions:
+      - name: bill_date
+        expr: bill_date
+        description: Date and time when the bill was generated
+        unique: false
+        data_type: datetime
+      - name: ist_bill_date
+        expr: ist_bill_date
+        description: IST (Indian Standard Time) bill date
+        unique: false
+        data_type: datetime
+    measures:
+      - name: total_amount
+        expr: total_amount
+        description: Total billing amount before discounts
+        synonyms: ["billing amount", "gross amount", "total bill"]
+        default_aggregation: sum
+        data_type: number
+      - name: total_discount
+        expr: total_discount
+        description: Total discount amount applied to the bill
+        synonyms: ["discount", "discount amount", "rebate"]
+        default_aggregation: sum
+        data_type: number
+      - name: net_amount
+        expr: total_amount - total_discount
+        description: Net billing amount after discounts (total_amount - total_discount)
+        synonyms: ["net bill", "final amount", "amount after discount"]
+        default_aggregation: sum
+        data_type: number
+      - name: billing_count
+        expr: billing_id
+        description: Count of billing transactions
+        synonyms: ["number of bills", "transaction count", "bill count"]
+        default_aggregation: count
+        data_type: number
+      - name: avg_bill_amount
+        expr: total_amount
+        description: Average billing amount per transaction
+        synonyms: ["average bill", "mean amount"]
+        default_aggregation: avg
+        data_type: number
+      - name: discount_percentage
+        expr: (total_discount / total_amount) * 100
+        description: Discount percentage (total_discount / total_amount * 100)
+        synonyms: ["discount rate", "discount percent"]
+        default_aggregation: avg
+        data_type: number
+    dimensions:
+      - name: billing_id
+        expr: billing_id
+        data_type: varchar
+      - name: patient_id
+        expr: patient_id
+        data_type: varchar
+      - name: hospital_id
+        expr: hospital_id
+        data_type: varchar
+      - name: department_id
+        expr: department_id
+        data_type: varchar
+      - name: insprovider_id
+        expr: insprovider_id
+        data_type: varchar
+      - name: doctor_id
+        expr: doctor_id
+        data_type: varchar
+      - name: bill_status
+        expr: bill_status
+        description: Status of the billing transaction
+        data_type: varchar
+      - name: parent_type
+        expr: parent_type
+        description: Type of parent service or billing category
+        data_type: varchar
+
+  - name: dim_branches
+    description: Hospital branches dimension table with hospital information and status.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: dim_branches
+    primary_key:
+      columns:
+        - hospital_id
+    dimensions:
+      - name: hospital_id
+        expr: hospital_id
+        data_type: varchar
+      - name: hospital_name
+        expr: hospital_name
+        description: Name of the hospital branch
+        data_type: varchar
+      - name: hospital_status
+        expr: status
+        description: Current status of the hospital branch
+        data_type: varchar
+
+  - name: dim_departments
+    description: Hospital departments dimension table with department details and service capabilities.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: dim_departments
+    primary_key:
+      columns:
+        - department_id
+    dimensions:
+      - name: department_id
+        expr: department_id
+        data_type: varchar
+      - name: department_name
+        expr: department_name
+        description: Name of the hospital department
+        data_type: varchar
+      - name: admission_allowed
+        expr: admission_allowed
+        description: Whether the department allows patient admissions
+        data_type: varchar
+      - name: opd_allowed
+        expr: opd_allowed
+        description: Whether the department provides OPD services
+        data_type: varchar
+      - name: emergency_allowed
+        expr: emergency_allowed
+        description: Whether the department handles emergency cases
+        data_type: varchar
+      - name: department_status
+        expr: status
+        description: Current status of the department
+        data_type: varchar
+
+  - name: dim_insproviders
+    description: Insurance providers dimension table with sponsor information.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: dim_insproviders
+    primary_key:
+      columns:
+        - insprovider_id
+    dimensions:
+      - name: insprovider_id
+        expr: insprovider_id
+        data_type: varchar
+      - name: sponsor_name
+        expr: sponsor_name
+        description: Name of the insurance provider or sponsor
+        data_type: varchar
+
+  - name: dim_users
+    description: Healthcare professionals dimension table with doctor information and qualifications.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: dim_users
+    primary_key:
+      columns:
+        - doctor_id
+    dimensions:
+      - name: doctor_id
+        expr: doctor_id
+        data_type: varchar
+      - name: first_name
+        expr: first_name
+        description: Doctor's first name
+        data_type: varchar
+      - name: last_name
+        expr: last_name
+        description: Doctor's last name
+        data_type: varchar
+      - name: full_name
+        expr: CONCAT(first_name, ' ', last_name)
+        description: Doctor's full name
+        data_type: varchar
+      - name: department_id
+        expr: department_id
+        data_type: varchar
+      - name: doctor_status
+        expr: status
+        description: Current status of the doctor
+        data_type: varchar
+      - name: qualification
+        expr: qualification
+        description: Doctor's educational qualifications
+        data_type: varchar
+      - name: specialization
+        expr: specialization
+        description: Doctor's medical specialization
+        data_type: varchar
+
+  - name: dim_patients
+    description: Patient dimension table with demographic and contact information.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: dim_patients
+    primary_key:
+      columns:
+        - patient_id
+    time_dimensions:
+      - name: registration_date
+        expr: registration_date
+        description: Date when the patient was registered
+        unique: false
+        data_type: date
+      - name: birthdate
+        expr: birthdate
+        description: Patient's date of birth
+        unique: false
+        data_type: date
+    dimensions:
+      - name: patient_id
+        expr: patient_id
+        data_type: varchar
+      - name: patient_name
+        expr: name
+        description: Patient's full name
+        data_type: varchar
+      - name: sex
+        expr: sex
+        description: Patient's gender
+        data_type: varchar
+      - name: age
+        expr: age
+        description: Patient's age
+        data_type: number
+      - name: phone_number
+        expr: phone_number
+        description: Patient's contact phone number
+        data_type: varchar
+      - name: age_group
+        expr: |
+          CASE 
+            WHEN age < 18 THEN 'Child'
+            WHEN age BETWEEN 18 AND 35 THEN 'Young Adult'
+            WHEN age BETWEEN 36 AND 55 THEN 'Middle Age'
+            WHEN age BETWEEN 56 AND 70 THEN 'Senior'
+            ELSE 'Elderly'
+          END
+        description: Patient age group classification
+        data_type: varchar
+
+  - name: bridge_dim_patientinsurers
+    description: Bridge table linking patients to their insurance providers.
+    base_table:
+      database: tenwave_db
+      schema: data
+      table: bridge_dim_patientinsurers
+    primary_key:
+      columns:
+        - patient_id
+        - insprovider_id
+    dimensions:
+      - name: patient_id
+        expr: patient_id
+        data_type: varchar
+      - name: insprovider_id
+        expr: insprovider_id
+        data_type: varchar
+
+relationships:
+  - name: billing_to_branches
+    left_table: fact_billing
+    right_table: dim_branches
+    relationship_columns:
+      - left_column: hospital_id
+        right_column: hospital_id
+    relationship_type: many_to_one
+
+  - name: billing_to_departments
+    left_table: fact_billing
+    right_table: dim_departments
+    relationship_columns:
+      - left_column: department_id
+        right_column: department_id
+    relationship_type: many_to_one
+
+  - name: billing_to_insproviders
+    left_table: fact_billing
+    right_table: dim_insproviders
+    relationship_columns:
+      - left_column: insprovider_id
+        right_column: insprovider_id
+    relationship_type: many_to_one
+
+  - name: billing_to_users
+    left_table: fact_billing
+    right_table: dim_users
+    relationship_columns:
+      - left_column: doctor_id
+        right_column: doctor_id
+    relationship_type: many_to_one
+
+  - name: billing_to_patients
+    left_table: fact_billing
+    right_table: dim_patients
+    relationship_columns:
+      - left_column: patient_id
+        right_column: patient_id
+    relationship_type: many_to_one
+
+  - name: users_to_departments
+    left_table: dim_users
+    right_table: dim_departments
+    relationship_columns:
+      - left_column: department_id
+        right_column: department_id
+    relationship_type: many_to_one
+
+  - name: patientinsurers_to_patients
+    left_table: bridge_dim_patientinsurers
+    right_table: dim_patients
+    relationship_columns:
+      - left_column: patient_id
+        right_column: patient_id
+    relationship_type: many_to_one
+
+  - name: patientinsurers_to_insproviders
+    left_table: bridge_dim_patientinsurers
+    right_table: dim_insproviders
+    relationship_columns:
+      - left_column: insprovider_id
+        right_column: insprovider_id
+    relationship_type: many_to_one
+
+  - name: billing_to_hospitals
+    left_table: fact_billing
+    right_table: dim_branches
+    relationship_columns:
+      - left_column: hospital_id
+        right_column: hospital_id
+    relationship_type: many_to_one
+
+verified_queries:
+  - name: doctor_count_per_department
+    question: Number of doctors per department
+    sql: |
+      SELECT
+        d.department_name,
+        COUNT(DISTINCT u.doctor_id) AS doctor_count
+      FROM dim_users u
+      JOIN dim_departments d ON u.department_id = d.department_id
+      GROUP BY d.department_name
+
+  - name: billing_summary_by_status
+    question: Total and net billing by bill status
+    sql: |
+      SELECT
+        bill_status,
+        SUM(total_amount) AS total_amount,
+        SUM(net_amount) AS net_amount
+      FROM fact_billing
+      GROUP BY bill_status
+
+  - name: patient_age_groups
+    question: Number of patients per age group
+    sql: |
+      SELECT
+        age_group,
+        COUNT(*) AS patient_count
+      FROM dim_patients
+      GROUP BY age_group
